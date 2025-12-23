@@ -12,8 +12,6 @@ import com.bank.rcm.service.ComplianceService;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-
 
 @RestController
 @RequestMapping("/api/test")
@@ -34,6 +32,5 @@ public class TestController {
     public String triggerUpload() {
         return complianceService.processExcelUpload();
     }
-    
 
 }
