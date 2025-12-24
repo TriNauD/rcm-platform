@@ -1,6 +1,5 @@
 package com.bank.rcm.service;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +48,6 @@ public class ExcelService {
                 inventory.setPublicationId(getCellValue(row.getCell(0)));
                 inventory.setPublicationName(getCellValue(row.getCell(1)));
                 inventory.setRegulator(getCellValue(row.getCell(2)));
-                inventory.setRegulatorTier(getCellValue(row.getCell(3)));
                 list.add(inventory);
             }
 

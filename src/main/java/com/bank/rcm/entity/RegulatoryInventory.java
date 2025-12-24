@@ -18,14 +18,12 @@ public class RegulatoryInventory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "publication_id", unique = true, nullable = false)
     private String publicationId;
 
     private String publicationName;
 
     private String regulator;
-
-    @Column(name = "regulator_tier")
-    private String regulatorTier;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
