@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.bank.rcm.entity.RegulatoryInventory;
 import com.bank.rcm.repository.RegulatoryInventoryRepository;
+import com.bank.rcm.service.CubeInternalSerice;
 import com.bank.rcm.service.ExcelService;
 import org.springframework.web.bind.annotation.PostMapping;
 
@@ -20,6 +21,9 @@ public class ComplianceController {
     private ExcelService excelService;
 
     @Autowired
+    private CubeInternalSerice cubeInternalSerice;
+
+    @Autowired
     private RegulatoryInventoryRepository repository;
 
     @PostMapping("/upload")
@@ -27,6 +31,16 @@ public class ComplianceController {
         try {
             // 调用解析
             List<RegulatoryInventory> data = excelService.parseRegulatoryExcel(file);
+            for (RegulatoryInventory item : data) {
+                boolean isValidCompliance = cubeInternalSerice.validateWithCube(item.getPublicationId());
+                if (isValidCompliance) {
+                    item.setComplianceStatus("COMPLIANT");
+                    item.setValidationResult("CUBE validation passed.");
+                } else {
+                    item.setComplianceStatus("NON_COMPLIANT");
+                    item.setValidationResult("CUBE validation failed: Invalid ID format or mapping missing.");
+                }
+            }
             // 保存数据
             repository.saveAll(data);
             return "上传成功，共导入 " + data.size() + " 条记录！";

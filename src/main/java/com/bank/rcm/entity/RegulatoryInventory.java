@@ -29,4 +29,9 @@ public class RegulatoryInventory {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    private String complianceStatus;
+
+    @Column(length = 1000)
+    private String validationResult;
 }
