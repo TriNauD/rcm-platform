@@ -7,8 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.bank.rcm.entity.RegulatoryInventory;
-import com.bank.rcm.repository.RegulatoryInventoryRepository;
+import com.bank.rcm.entity.ComplianceInventory;
+import com.bank.rcm.repository.ObligationInventoryRepository;
 
 import jakarta.transaction.Transactional;
 
@@ -21,23 +21,22 @@ public class ComplianceService {
     private CubeInternalSerice cubeInternalSerice;
 
     @Autowired
-    private RegulatoryInventoryRepository repo;
+    private ObligationInventoryRepository repo;
 
     @Transactional
     public String processComplianceFile(MultipartFile file) throws Exception {
         int toUpdateRowCount = 0, toInsertRowCount = 0;
 
         // parse excel
-        List<RegulatoryInventory> rawData = excelService.parseRegulatoryExcel(file);
+        List<ComplianceInventory> rawData = excelService.parseRegulatoryExcel(file);
 
         // process all data
-        for (RegulatoryInventory data : rawData) {
-            Optional<RegulatoryInventory> existOpt = repo.findByPublicationId(data.getPublicationId());
-            RegulatoryInventory targetEntity;
+        for (ComplianceInventory data : rawData) {
+            Optional<ComplianceInventory> existOpt = repo.findByObligationId(data.getObligationId());
+            ComplianceInventory targetEntity;
             if (existOpt.isPresent()) {
                 targetEntity = existOpt.get();
-                targetEntity.setPublicationName(data.getPublicationName());
-                targetEntity.setComplianceStatus(data.getComplianceStatus());
+                targetEntity.setObligationName(data.getObligationName());
                 targetEntity.setRegulator(data.getRegulator());
                 toUpdateRowCount++;
             } else {
@@ -46,12 +45,12 @@ public class ComplianceService {
             }
 
             // validate with cube
-            boolean isValidCompliance = cubeInternalSerice.validateWithCube(data.getPublicationId());
+            boolean isValidCompliance = cubeInternalSerice.validateWithCube(data.getObligationId());
             if (isValidCompliance) {
-                data.setComplianceStatus("COMPLIANT");
+                data.setObligationStatus("COMPLIANT");
                 data.setValidationResult("CUBE validation passed.");
             } else {
-                data.setComplianceStatus("NON_COMPLIANT");
+                data.setObligationStatus("NON_COMPLIANT");
                 data.setValidationResult("CUBE validation failed: Invalid ID format or mapping missing.");
             }
 

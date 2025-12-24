@@ -6,8 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.bank.rcm.entity.RegulatoryInventory;
-import com.bank.rcm.repository.RegulatoryInventoryRepository;
+import com.bank.rcm.entity.ComplianceInventory;
+import com.bank.rcm.repository.ObligationInventoryRepository;
 
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class TestController {
 
     @Autowired
-    private RegulatoryInventoryRepository repository;
+    private ObligationInventoryRepository repository;
 
     @GetMapping("/check")
-    public List<RegulatoryInventory> getAll() {
+    public List<ComplianceInventory> getAll() {
         return repository.findAll();
     }
 

@@ -12,28 +12,28 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.bank.rcm.entity.RegulatoryInventory;
+import com.bank.rcm.entity.ComplianceInventory;
 
 @Service
 public class ExcelService {
-    public List<RegulatoryInventory> mockParseExcel() {
-        List<RegulatoryInventory> list = new ArrayList<>();
+    public List<ComplianceInventory> mockParseExcel() {
+        List<ComplianceInventory> list = new ArrayList<>();
 
-        RegulatoryInventory row1 = new RegulatoryInventory();
-        row1.setPublicationId("PUBN-row1");
-        row1.setPublicationName("row1");
+        ComplianceInventory row1 = new ComplianceInventory();
+        row1.setObligationId("PUBN-row1");
+        row1.setObligationName("row1");
         list.add(row1);
 
-        RegulatoryInventory row2 = new RegulatoryInventory();
-        row2.setPublicationId("PUBN-row2");
-        row2.setPublicationName("row2");
+        ComplianceInventory row2 = new ComplianceInventory();
+        row2.setObligationId("PUBN-row2");
+        row2.setObligationName("row2");
         list.add(row2);
 
         return list;
     }
 
-    public List<RegulatoryInventory> parseRegulatoryExcel(MultipartFile file) throws Exception {
-        List<RegulatoryInventory> list = new ArrayList<>();
+    public List<ComplianceInventory> parseRegulatoryExcel(MultipartFile file) throws Exception {
+        List<ComplianceInventory> list = new ArrayList<>();
 
         try (InputStream is = file.getInputStream();
                 Workbook workbook = new XSSFWorkbook(is)) {
@@ -44,9 +44,9 @@ public class ExcelService {
                 if (row.getRowNum() == 0) {
                     continue;
                 }
-                RegulatoryInventory inventory = new RegulatoryInventory();
-                inventory.setPublicationId(getCellValue(row.getCell(0)));
-                inventory.setPublicationName(getCellValue(row.getCell(1)));
+                ComplianceInventory inventory = new ComplianceInventory();
+                inventory.setObligationId(getCellValue(row.getCell(0)));
+                inventory.setObligationName(getCellValue(row.getCell(1)));
                 inventory.setRegulator(getCellValue(row.getCell(2)));
                 list.add(inventory);
             }
