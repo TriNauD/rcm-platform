@@ -1,0 +1,12 @@
+package com.bank.rcm.DTO;
+
+import lombok.Data;
+
+@Data
+public class StepBDto {
+    private String type; // Add or Update
+    private String obligationId; 
+    private String cesId;
+    private String cesStatement;
+    private String ceamIds; // "CEAM1|CEAM2"
+}
