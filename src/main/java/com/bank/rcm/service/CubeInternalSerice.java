@@ -8,13 +8,13 @@ import org.springframework.stereotype.Service;
 public class CubeInternalSerice {
     public boolean validateWithCube(String complianceId) {
         try {
-            // mock calling cube service
-            Thread.sleep(300);
+            // 模拟调用外部cube接口，每次查询需要200ms
+            Thread.sleep(200);
             if (complianceId == null) {
                 return false;
             }
-            // mock cube validate result
-            return new Random().nextBoolean();
+            // 模拟结果valid/invalid，90%为valid数据
+            return new Random().nextInt(100) < 90;
         } catch (Exception e) {
             Thread.currentThread().interrupt();
             return false;
