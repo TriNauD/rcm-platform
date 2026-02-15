@@ -1,4 +1,4 @@
-package com.bank.rcm.DTO;
+package com.bank.rcm.dto;
 
 import lombok.Data;
 

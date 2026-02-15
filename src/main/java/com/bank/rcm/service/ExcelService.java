@@ -12,6 +12,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.bank.rcm.dto.StepBDto;
 import com.bank.rcm.entity.ComplianceInventory;
 
 @Service
@@ -52,6 +53,29 @@ public class ExcelService {
             }
 
         }
+        return list;
+    }
+
+    public List<StepBDto> parseStepBExcel(MultipartFile file) throws Exception {
+        List<StepBDto> list = new ArrayList<>();
+
+        try (InputStream is = file.getInputStream();
+                Workbook workbook = new XSSFWorkbook(is)) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            for (Row row : sheet) {
+                if (row.getRowNum() ==0) {
+                    continue;
+                }
+                StepBDto stepBDto = new StepBDto();
+                stepBDto.setObligationId(getCellValue(row.getCell(0)));
+                stepBDto.setCesId(getCellValue(row.getCell(1)));
+                stepBDto.setCesStatement(getCellValue(row.getCell(2)));
+                stepBDto.setCeamIds(getCellValue(row.getCell(3)));
+                list.add(stepBDto);
+            }
+        } 
+
         return list;
     }
 
