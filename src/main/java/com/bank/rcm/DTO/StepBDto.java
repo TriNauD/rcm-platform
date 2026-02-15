@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class StepBDto {
-    private String type; // Add or Update
     private String obligationId; 
     private String cesId;
     private String cesStatement;

@@ -9,7 +9,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.bank.rcm.service.ComplianceStepBService;
 import org.springframework.web.bind.annotation.PostMapping;
 
-
 @RestController
 @RequestMapping("/api/mapping")
 public class RcmMappingController {
@@ -18,11 +17,11 @@ public class RcmMappingController {
 
     @PostMapping("/upload")
     public String postMethodName(@RequestParam("file") MultipartFile file) {
-                try {
-            return complianceStepBService.processStepBFile(file);
+        try {
+            return complianceStepBService.processStepBFileWithPoiSingleThread(file);
         } catch (Exception e) {
             return "上传失败： " + e.getMessage();
         }
     }
-    
+
 }
