@@ -5,7 +5,7 @@ import java.util.Random;
 import org.springframework.stereotype.Service;
 
 @Service
-public class CubeInternalSerice {
+public class CubeInternalService {
     public boolean validateWithCube(String complianceId) {
         try {
             // 模拟调用外部cube接口，每次查询需要200ms

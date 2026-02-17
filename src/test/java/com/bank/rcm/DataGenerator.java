@@ -46,8 +46,45 @@ public class DataGenerator {
         System.out.println("OB 指令：任务完成！文件已存至: " + filePath);
     }
 
-    public static void main(String[] args) {
-        generateHappyCaseTestData();
+    // 可生成重复数据
+    private static void generateStressTestData(int totalRows, int uniqueObCount) {
+        // ... 前置路径处理逻辑保持不变 ...
+        // 1. 动态获取项目路径，确保生成到 templates 文件夹
+        String projectPath = System.getProperty("user.dir");
+        String filePath = projectPath + File.separator + "src" + File.separator + "main" +
+                File.separator + "resources" + File.separator + "templates" +
+                File.separator + "happy_case_" + totalRows + "_unique_" + uniqueObCount + ".xlsx";
+        // 确保目录存在
+        File file = new File(filePath);
+        if (!file.getParentFile().exists()) {
+            file.getParentFile().mkdirs();
+        }
+
+        List<StepBDto> list = new ArrayList<>();
+        for (int i = 1; i <= totalRows; i++) {
+            StepBDto data = new StepBDto();
+
+            // 【核心修改点】
+            // 通过 i % uniqueObCount，让 ObligationId 在一定范围内循环
+            // 例如 totalRows=4000, uniqueObCount=2000，则每个 ID 会出现两次
+            int obSuffix = (i % uniqueObCount) + 1;
+            data.setObligationId("OB-ID-" + String.format("%04d", obSuffix));
+
+            // CES ID 必须保持唯一，否则会变成单纯的更新操作，失去测试意义
+            data.setCesId("CES-ID-" + String.format("%04d", i));
+            data.setCesStatement("Statement for row " + i);
+            data.setCeamIds("CEAM-" + i + "-1");
+
+            list.add(data);
+        }
+
+        EasyExcel.write(filePath, StepBDto.class).sheet("Sheet1").doWrite(list);
+        System.out.println("数据生产完成。总行数：" + totalRows + "，唯一 OB 数：" + uniqueObCount);
     }
-    
+
+    public static void main(String[] args) {
+        // generateHappyCaseTestData();
+        generateStressTestData(4000, 2000);
+    }
+
 }
