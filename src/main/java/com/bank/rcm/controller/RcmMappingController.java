@@ -18,7 +18,7 @@ public class RcmMappingController {
     @PostMapping("/upload")
     public String postMethodName(@RequestParam("file") MultipartFile file) {
         try {
-            return complianceStepBService.processStepBFileWithEasyExcel(file);
+            return complianceStepBService.processStepBFile(file);
         } catch (Exception e) {
             return "上传失败： " + e.getMessage();
         }

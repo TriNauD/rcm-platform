@@ -18,7 +18,7 @@ public class ComplianceService {
     private ExcelService excelService;
 
     @Autowired
-    private CubeInternalSerice cubeInternalSerice;
+    private CubeInternalService cubeInternalService;
 
     @Autowired
     private ObligationInventoryRepository repo;
@@ -45,7 +45,7 @@ public class ComplianceService {
             }
 
             // validate with cube
-            boolean isValidCompliance = cubeInternalSerice.validateWithCube(data.getObligationId());
+            boolean isValidCompliance = cubeInternalService.validateWithCube(data.getObligationId());
             if (isValidCompliance) {
                 data.setObligationStatus("COMPLIANT");
                 data.setValidationResult("CUBE validation passed.");

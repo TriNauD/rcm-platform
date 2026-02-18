@@ -32,7 +32,7 @@ public class ComplianceStepBService {
     private ExcelService excelService;
 
     @Autowired
-    private CubeInternalSerice cubeInternalSerice;
+    private CubeInternalService cubeInternalService;
 
     @Autowired
     private RcmMappingRepository rcmMappingRepository;
@@ -45,7 +45,7 @@ public class ComplianceStepBService {
 
     @Transactional
     @MonitorPerformance("EasyExcel-Batch-Process")
-    public String processStepBFileWithEasyExcel(MultipartFile file) throws IOException {
+    public String processStepBFile(MultipartFile file) throws IOException {
         ProcessResult result = new ProcessResult();
 
         // 用于保存DTO用于批处理
@@ -81,9 +81,9 @@ public class ComplianceStepBService {
         List<RcmMappingEntity> mappingList = new ArrayList<>();
 
         for (StepBDto data : batch) {
-            // 如果没有则调cube，否则
+            // 如果没有则调cube，否则跳过
             boolean isValid = obCache.computeIfAbsent(data.getObligationId(),
-                    id -> cubeInternalSerice.validateWithCube(id));
+                    id -> cubeInternalService.validateWithCube(id));
             if (!isValid) {
                 continue;
             }
@@ -105,7 +105,7 @@ public class ComplianceStepBService {
 
     private void processEntity(StepBDto data, List<ControlExpectation> cesList, List<RcmMappingEntity> mappingList,
             ProcessResult result) {
-        // 校验并保存 CES (每一行都查一次库，存一次库)
+        // 校验CES，存入list，结果中计数
         Optional<ControlExpectation> cesOpt = cesRepository.findByCesId(data.getCesId());
         ControlExpectation cesEntity;
         if (cesOpt.isPresent()) {
@@ -120,7 +120,7 @@ public class ComplianceStepBService {
         }
         cesList.add(cesEntity);
 
-        // 拆分 CEAM 并保存映射 (循环内处理多对多)
+        // split拆分CEAM，存入list，结果中计数
         if (data.getCeamIds() != null && !data.getCeamIds().isEmpty()) {
             String[] ceamArray = data.getCeamIds().split("\\|");
             for (String ceamId : ceamArray) {
