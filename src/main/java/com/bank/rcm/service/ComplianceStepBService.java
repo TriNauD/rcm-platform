@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,14 +19,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.bank.rcm.annotation.MonitorPerformance;
 import com.bank.rcm.dto.ProcessResult;
 import com.bank.rcm.dto.StepBDto;
-import com.bank.rcm.entity.ControlExpectation;
-import com.bank.rcm.mapper.RcmMappingEntity;
-import com.bank.rcm.repository.ControlExpectationRepository;
-import com.bank.rcm.repository.RcmMappingRepository;
 
 import jakarta.annotation.Resource;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -41,13 +34,7 @@ public class ComplianceStepBService {
     private CubeInternalService cubeInternalService;
 
     @Autowired
-    private RcmMappingRepository rcmMappingRepository;
-
-    @Autowired
-    private ControlExpectationRepository cesRepository;
-
-    @PersistenceContext
-    private EntityManager entityManager;
+    private ComplianceWriterService complianceWriterService;
 
     @Resource(name = "cubeCheckExecutor")
     private Executor cubeCheckExecutor;
@@ -89,7 +76,7 @@ public class ComplianceStepBService {
 
     // 开线程池异步并发请求cube，得到ob合法性map
     public Map<String, Boolean> preCheckObAsync(Set<String> obIds) {
-        Map<String, Boolean> resultMap = new ConcurrentHashMap<>(obIds.size());//指定size，防止后续扩容
+        Map<String, Boolean> resultMap = new ConcurrentHashMap<>(obIds.size());// 指定size，防止后续扩容
 
         if (obIds == null || obIds.isEmpty()) {
             return resultMap;
@@ -126,75 +113,18 @@ public class ComplianceStepBService {
                 StepBDto.class,
                 data -> {
                     batchBuffer.add(data);
+                    // 凑满一批一起处理
                     if (batchBuffer.size() >= BATCH_SIZE) {
-                        processAndSaveBatch(batchBuffer, result, preCheckMap);
+                        complianceWriterService.processAndSaveBatch(batchBuffer, result, preCheckMap);
                         batchBuffer.clear();
                     }
                 });
 
         // 收尾最后未满100条的
         if (!batchBuffer.isEmpty()) {
-            processAndSaveBatch(batchBuffer, result, preCheckMap);
+            complianceWriterService.processAndSaveBatch(batchBuffer, result, preCheckMap);
             batchBuffer.clear();
         }
     }
-
-    private void processAndSaveBatch(List<StepBDto> batch, ProcessResult result, Map<String, Boolean> preCheckMap) {
-        List<ControlExpectation> cesList = new ArrayList<>();
-        List<RcmMappingEntity> mappingList = new ArrayList<>();
-
-        for (StepBDto data : batch) {
-            // 如果非法则跳过
-            if (!preCheckMap.get(data.getObligationId())) {
-                continue;
-            }
-            // 组装待写入的数据
-            processEntity(data, cesList, mappingList, result);
-        }
-
-        // 批量写入数据
-        cesRepository.saveAll(cesList);
-        rcmMappingRepository.saveAll(mappingList);
-
-        cesList.clear();
-        mappingList.clear();
-
-        // // 刷新并清除
-        // entityManager.flush(); // 将缓存中的变更立即同步到数据库
-        // entityManager.clear(); // 清除一级缓存，释放内存空间
-    }
-
-    // 组装数据，放进ces和mapping的list里，不操作数据库
-    private void processEntity(StepBDto data, List<ControlExpectation> cesList, List<RcmMappingEntity> mappingList,
-            ProcessResult result) {
-        // 校验CES，存入list，结果中计数
-        Optional<ControlExpectation> cesOpt = cesRepository.findByCesId(data.getCesId());
-        ControlExpectation cesEntity;
-        if (cesOpt.isPresent()) {
-            cesEntity = cesOpt.get();
-            cesEntity.setCesDesc(data.getCesStatement());
-            result.addUpdated();
-        } else {
-            cesEntity = new ControlExpectation();
-            cesEntity.setCesId(data.getCesId());
-            cesEntity.setCesDesc(data.getCesStatement());
-            result.addInserted();
-        }
-        cesList.add(cesEntity);
-
-        // split拆分CEAM，存入list，结果中计数
-        if (data.getCeamIds() != null && !data.getCeamIds().isEmpty()) {
-            String[] ceamArray = data.getCeamIds().split("\\|");
-            for (String ceamId : ceamArray) {
-                RcmMappingEntity mapping = new RcmMappingEntity();
-                mapping.setObId(data.getObligationId());
-                mapping.setCesId(data.getCesId());
-                mapping.setCeamId(ceamId.trim());
-
-                mappingList.add(mapping);
-            }
-            result.addMappings(ceamArray.length);
-        }
-    }
-
+    
 }
