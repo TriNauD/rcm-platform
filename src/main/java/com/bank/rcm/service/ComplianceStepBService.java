@@ -43,35 +43,37 @@ public class ComplianceStepBService {
     public String processStepBFile(MultipartFile file) throws IOException {
         ProcessResult result = new ProcessResult();
 
-        // 扫描文件，得到所有唯一的obid
-        Set<String> allUniqueObIds = collectUniqueObIds(file);
+        // 1. 收集数据
+        Set<String> allUniqueObIds = new HashSet<>();// 扫描文件，得到所有唯一的obid，使用 Set 而非 List，将 O(n) 的包含检查降为 O(1)
+        List<StepBDto> allRecords = new ArrayList<>();
+
+        collectDataAndIds(file, allUniqueObIds, allRecords);
 
         if (CollectionUtils.isEmpty(allUniqueObIds)) {
             log.warn("文件解析完成，但未提取到任何有效的 ObligationId");
             return result.toSummaryString(); // 直接返回，省去后续所有开销
         }
 
-        // 异步校验
+        // 2. 异步校验
         Map<String, Boolean> preCheckMap = preCheckObAsync(allUniqueObIds);
 
-        // 业务处理，批量入库
-        processAndSaveWithResults(file, preCheckMap, result);
+        // 3. 业务处理，批量入库
+        dipatchSaveTasks(allRecords, preCheckMap, result);
 
         return result.toSummaryString();
     }
 
-    private Set<String> collectUniqueObIds(MultipartFile file) throws IOException {
-
-        Set<String> uniqueObIds = new HashSet<>();// 使用 Set 而非 List，将 O(n) 的包含检查降为 O(1)
-
+    // 流式读取excel文件
+    private void collectDataAndIds(MultipartFile file, Set<String> allUniqueObIds, List<StepBDto> allRecords)
+            throws IOException {
+        // 流式读取文件
         excelService.readExcelInStream(
                 file.getInputStream(),
                 StepBDto.class,
                 data -> {
-                    uniqueObIds.add(data.getObligationId());
+                    allRecords.add(data);
+                    allUniqueObIds.add(data.getObligationId());
                 });
-
-        return uniqueObIds;
     }
 
     // 开线程池异步并发请求cube，得到ob合法性map
@@ -100,31 +102,19 @@ public class ComplianceStepBService {
         return resultMap;
     }
 
-    // 批量保存结果
-    private void processAndSaveWithResults(MultipartFile file, Map<String, Boolean> preCheckMap, ProcessResult result)
+    // 批量分发保存结果
+    private void dipatchSaveTasks(List<StepBDto> allRecords, Map<String, Boolean> preCheckMap,
+            ProcessResult result)
             throws IOException {
-        // 用于保存DTO用于批处理
-        List<StepBDto> batchBuffer = new ArrayList<>();
         final int BATCH_SIZE = 100;
 
-        // excelService每在stream读到一个StepBDto，都把它作为参数丢进调用的方法去处理
-        excelService.readExcelInStream(
-                file.getInputStream(),
-                StepBDto.class,
-                data -> {
-                    batchBuffer.add(data);
-                    // 凑满一批一起处理
-                    if (batchBuffer.size() >= BATCH_SIZE) {
-                        complianceWriterService.processAndSaveBatch(batchBuffer, result, preCheckMap);
-                        batchBuffer.clear();
-                    }
-                });
+        for (int i = 0; i < allRecords.size(); i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, allRecords.size());
+            List<StepBDto> batch = allRecords.subList(i, end);
 
-        // 收尾最后未满100条的
-        if (!batchBuffer.isEmpty()) {
-            complianceWriterService.processAndSaveBatch(batchBuffer, result, preCheckMap);
-            batchBuffer.clear();
+            // 派发任务。每一批次独立事务
+            complianceWriterService.processAndSaveBatch(batch, result, preCheckMap);
         }
     }
-    
+
 }

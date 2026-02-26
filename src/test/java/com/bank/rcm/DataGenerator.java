@@ -9,26 +9,23 @@ import java.util.List;
 // 用于生成测试数据的小工具
 public class DataGenerator {
 
-    private static void generateHappyCaseTestData() {
-        // 0. 设置数据量
-        int generateDataAmount = 100;
-
+    private static void generateHappyCaseTestData(int totalRows) {
         // 1. 动态获取项目路径，确保生成到 templates 文件夹
         String projectPath = System.getProperty("user.dir");
         String filePath = projectPath + File.separator + "src" + File.separator + "main" +
                 File.separator + "resources" + File.separator + "templates" +
-                File.separator + "happy_case_" + generateDataAmount + ".xlsx";
+                File.separator + "happy_case_" + totalRows + ".xlsx";
         // 确保目录存在
         File file = new File(filePath);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
 
-        System.out.println("OB 指令：开始生产 " + generateDataAmount + " 行 Happy Case 数据...");
+        System.out.println("OB 指令：开始生产 " + totalRows + " 行 Happy Case 数据...");
 
         // 2. 构造数据
         List<StepBDto> list = new ArrayList<>();
-        for (int i = 1; i <= generateDataAmount; i++) {
+        for (int i = 1; i <= totalRows; i++) {
             StepBDto data = new StepBDto();
             data.setObligationId("OB-ID-" + String.format("%04d", i));
             data.setCesId("CES-ID-" + String.format("%04d", i));
@@ -48,7 +45,6 @@ public class DataGenerator {
 
     // 可生成重复数据
     private static void generateStressTestData(int totalRows, int uniqueObCount) {
-        // ... 前置路径处理逻辑保持不变 ...
         // 1. 动态获取项目路径，确保生成到 templates 文件夹
         String projectPath = System.getProperty("user.dir");
         String filePath = projectPath + File.separator + "src" + File.separator + "main" +
@@ -83,8 +79,8 @@ public class DataGenerator {
     }
 
     public static void main(String[] args) {
-        // generateHappyCaseTestData();
-        generateStressTestData(4000, 2000);
+        generateHappyCaseTestData(300);
+        // generateStressTestData(4000, 2000);
     }
 
 }
