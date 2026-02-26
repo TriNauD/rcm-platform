@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.bank.rcm.annotation.MonitorPerformance;
 import com.bank.rcm.dto.ProcessResult;
 import com.bank.rcm.dto.StepBDto;
+import com.google.common.collect.Lists;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -108,13 +109,15 @@ public class ComplianceStepBService {
             throws IOException {
         final int BATCH_SIZE = 100;
 
-        for (int i = 0; i < allRecords.size(); i += BATCH_SIZE) {
-            int end = Math.min(i + BATCH_SIZE, allRecords.size());
-            List<StepBDto> batch = allRecords.subList(i, end);
+        // guava分片list
+        List<List<StepBDto>> batches = Lists.partition(allRecords, BATCH_SIZE);
 
-            // 派发任务。每一批次独立事务
+        // 派发任务。每一批次独立事务
+        for (List<StepBDto> batch : batches) {
             complianceWriterService.processAndSaveBatch(batch, result, preCheckMap);
         }
+
+        log.info("所有 {} 批次分发完毕，共计 {} 条记录", batches.size(), allRecords.size());
     }
 
 }
