@@ -79,8 +79,8 @@ public class DataGenerator {
     }
 
     public static void main(String[] args) {
-        generateHappyCaseTestData(300);
-        // generateStressTestData(4000, 2000);
+        // generateHappyCaseTestData(300);
+        generateStressTestData(1000000, 1000000);
     }
 
 }

@@ -50,5 +50,5 @@ public class AppConstants {
     public static final long CUBE_CALL_DELAY_MS = 200;
     
     /** 模拟数据中合法数据的概率阈值 */
-    public static final int VALID_DATA_PROBABILITY = 90;
+    public static final int VALID_DATA_PROBABILITY = 100;
 }
