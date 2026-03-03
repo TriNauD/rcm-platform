@@ -3,7 +3,8 @@ package com.bank.rcm.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -50,70 +51,66 @@ public class ComplianceWriterService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processAndSaveBatch(List<StepBDto> batch, ProcessResult result, Map<String, Boolean> preCheckMap) {
-        List<ControlExpectation> cesList = new ArrayList<>();
-        List<RcmMappingEntity> mappingList = new ArrayList<>();
+        // 一次性查出该批次所有存在的 CES，避免在循环里 findByCesId
+        Set<String> cesIds = batch.stream().map(StepBDto::getCesId).collect(Collectors.toSet());
+        Map<String, ControlExpectation> existingCesMap = cesRepository.findAllByCesIdIn(cesIds)
+                .stream().collect(Collectors.toMap(ControlExpectation::getCesId, c -> c));
 
-        // 遍历批次中的每条数据进行处理
+        List<ControlExpectation> cesToSave = new ArrayList<>();
+        List<RcmMappingEntity> mappingsToSave = new ArrayList<>();
+
         for (StepBDto data : batch) {
-            // 根据预检结果过滤：获取当前ObligationId的合法性标记，若为null或false则跳过
-            Boolean isValid = preCheckMap.get(data.getObligationId());
-            if (isValid == null || !isValid) {
+            if (!Boolean.TRUE.equals(preCheckMap.get(data.getObligationId())))
                 continue;
-            }
+
+            // 直接从内存 Map 拿，不再走数据库 IO
+            ControlExpectation ces = existingCesMap.getOrDefault(data.getCesId(), null);
             // 对合法数据进行实体组装，将数据转换为数据库实体对象
-            processEntity(data, cesList, mappingList, result);
+            processEntity(data, ces, cesToSave, mappingsToSave, result);
         }
 
-        // 批量保存ces实体
-        cesRepository.saveAll(cesList);
-        // 批量保存RcmMappingEntity实体（RCM映射关系表）
-        rcmMappingRepository.saveAll(mappingList);
+        // 配合 Step 7：确保 saveAll 走的是 JDBC Batch
+        cesRepository.saveAll(cesToSave);
+        rcmMappingRepository.saveAll(mappingsToSave);
 
-        // 清空临时列表，便于垃圾回收
-        cesList.clear();
-        mappingList.clear();
-
-        // 将持久化上下文中的所有变更立即同步到数据库，确保数据已提交
         entityManager.flush();
-        // 清除Hibernate一级缓存中的所有实体对象，释放内存空间，防止大批量数据处理时的内存溢出
-        entityManager.clear();
+        entityManager.clear(); // 保持内存纯净的关键
     }
 
     /**
      * 组装Step B DTO为数据库实体对象
-     * <p>该方法不直接操作数据库，只进行数据转换和组装：
+     * <p>
+     * 该方法不直接操作数据库，只进行数据转换和组装：
      * <ul>
-     *   <li>处理ControlExpectation实体：如果CES存在则更新，否则新增</li>
-     *   <li>处理RcmMappingEntity实体：根据CEAM ID列表拆分并创建多条映射关系</li>
-     *   <li>更新处理结果统计：记录新增/更新/映射关系数量</li>
+     * <li>处理ControlExpectation实体：如果CES存在则更新，否则新增</li>
+     * <li>处理RcmMappingEntity实体：根据CEAM ID列表拆分并创建多条映射关系</li>
+     * <li>更新处理结果统计：记录新增/更新/映射关系数量</li>
      * </ul>
      * </p>
      *
-     * @param data 单条Step B DTO数据
-     * @param cesList ControlExpectation实体列表（输出参数，收集组装结果）
+     * @param data        单条Step B DTO数据
+     * @param ces         数据库查询出的ces结果，如未查到则为null
+     * @param cesList     ControlExpectation实体列表（输出参数，收集组装结果）
      * @param mappingList RcmMappingEntity实体列表（输出参数，收集组装结果）
-     * @param result 处理结果对象（输出参数，累计统计数据）
+     * @param result      处理结果对象（输出参数，累计统计数据）
      */
-    private void processEntity(StepBDto data, List<ControlExpectation> cesList, List<RcmMappingEntity> mappingList,
+    private void processEntity(StepBDto data, ControlExpectation ces, List<ControlExpectation> cesList,
+            List<RcmMappingEntity> mappingList,
             ProcessResult result) {
         // 校验CES（ControlExpectation）是否已存在
-        Optional<ControlExpectation> cesOpt = cesRepository.findByCesId(data.getCesId());
-        ControlExpectation cesEntity;
-        
-        if (cesOpt.isPresent()) {
+        if (ces != null) {
             // CES已存在：则更新其描述信息，并统计更新数
-            cesEntity = cesOpt.get();
-            cesEntity.setCesDesc(data.getCesStatement());
+            ces.setCesDesc(data.getCesStatement());
             result.addUpdated();
         } else {
             // CES不存在：则创建新对象，并统计新增数
-            cesEntity = new ControlExpectation();
-            cesEntity.setCesId(data.getCesId());
-            cesEntity.setCesDesc(data.getCesStatement());
+            ces = new ControlExpectation();
+            ces.setCesId(data.getCesId());
+            ces.setCesDesc(data.getCesStatement());
             result.addInserted();
         }
         // 将组装好的CES实体添加到列表中，待后续批量保存
-        cesList.add(cesEntity);
+        cesList.add(ces);
 
         // 处理CEAM ID列表：按管道符(|)进行分割，为每个CEAM创建一个RCM映射关系
         if (data.getCeamIds() != null && !data.getCeamIds().isEmpty()) {
